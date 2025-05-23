@@ -1,0 +1,21 @@
+keytool -v -genkeypair -dname "CN=localhost,OU=Amsterdam,O=localhost,C=NL" -keystore identity.jks -storepass changeit -keypass changeit -keyalg RSA -keysize 2048 -alias server -validity 3650 -deststoretype pkcs12 -ext KeyUsage=digitalSignature,dataEncipherment,keyEncipherment,keyAgreement -ext ExtendedKeyUsage=serverAuth,clientAuth -ext SubjectAlternativeName:c=DNS:localhost,DNS:raspberrypi.local,IP:127.0.0.1
+
+
+
+export cert of server
+keytool -v -exportcert -file server.cer -alias server -keystore identity.jks -storepass changeit -rfc
+
+put it in a truststore
+keytool -v -importcert -file server.cer -alias server -keystore truststore-client.jks -storepass changeit -noprompt
+
+
+
+client
+key store: 
+keytool -v -genkeypair -dname "CN=localhost,OU=localhost,O=localhost,C=NL" -keystore identity.jks -storepass changeit -keypass changeit -keyalg RSA -keysize 2048 -alias client -validity 3650 -deststoretype pkcs12 -ext KeyUsage=digitalSignature,dataEncipherment,keyEncipherment,keyAgreement -ext ExtendedKeyUsage=serverAuth,clientAuth
+
+export client cert
+keytool -v -exportcert -file client.cer -alias client -keystore identity.jks -storepass changeit -rfc
+
+put it in trustore of server
+keytool -v -importcert -file client.cer -alias client -keystore truststore-server.jks -storepass changeit -noprompt
