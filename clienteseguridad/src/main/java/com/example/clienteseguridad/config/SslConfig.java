@@ -53,7 +53,7 @@ public class SslConfig {
 
         SslContext sslContext = null;
         try(FileInputStream keyStoreFileInputStream = new FileInputStream(ResourceUtils.getFile(keyStorePath));
-            FileInputStream trustStoreFileInputStream = new FileInputStream(ResourceUtils.getFile(trustStorePath));
+            FileInputStream trustStoreFileInputStream = new FileInputStream(ResourceUtils.getFile(trustStorePath))
         ) {
             KeyStore keyStore = KeyStore.getInstance("jks");
             keyStore.load(keyStoreFileInputStream, keyStorePassword.toCharArray());

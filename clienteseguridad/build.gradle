@@ -30,6 +30,4 @@ dependencies {
 	implementation 'org.apache.httpcomponents:httpcore:4.4.8'
 }
 
-tasks.named('test') {
-	useJUnitPlatform()
-}
+

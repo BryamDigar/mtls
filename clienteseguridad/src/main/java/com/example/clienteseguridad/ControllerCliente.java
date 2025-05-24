@@ -14,10 +14,10 @@ public class ControllerCliente{
     @Autowired
     WebClient webClient;
 
-    @GetMapping("/https")
+    @GetMapping("/saludo")
     public String obtenerSaludo() {
         return webClient.get()
-                .uri("https://localhost:8075/hello")
+                .uri("https://localhost:8443/saludo")
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();

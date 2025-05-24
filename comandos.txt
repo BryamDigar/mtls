@@ -1,21 +1,37 @@
-keytool -v -genkeypair -dname "CN=localhost,OU=Amsterdam,O=localhost,C=NL" -keystore identity.jks -storepass changeit -keypass changeit -keyalg RSA -keysize 2048 -alias server -validity 3650 -deststoretype pkcs12 -ext KeyUsage=digitalSignature,dataEncipherment,keyEncipherment,keyAgreement -ext ExtendedKeyUsage=serverAuth,clientAuth -ext SubjectAlternativeName:c=DNS:localhost,DNS:raspberrypi.local,IP:127.0.0.1
+# --- PASO 1: Crear directorios para certificados ---
+mkdir -p /etc/nginx/test/ca /etc/nginx/test/server /etc/nginx/test/client
 
+# --- PASO 2: Generar CA Raíz (Autoridad de Certificación) ---
+# Archivo de configuración para extensiones de CA
+echo -e "[ v3_ca ]\nbasicConstraints = critical, CA:true\nkeyUsage = critical, keyCertSign, cRLSign\nsubjectKeyIdentifier = hash" > /etc/nginx/test/ca/ca-ext.cnf
 
+# Generar clave privada de la CA
+openssl genpkey -algorithm RSA -out /etc/nginx/test/ca/ca.key
 
-export cert of server
-keytool -v -exportcert -file server.cer -alias server -keystore identity.jks -storepass changeit -rfc
+# Generar certificado autofirmado de la CA (válido por 10 años)
+openssl req -new -x509 -days 3650 -key /etc/nginx/test/ca/ca.key -out /etc/nginx/test/ca/ca.crt -subj "/C=CO/ST=Bogota/L=Bogota/O=BancoFachero/CN=BancoFachero-Root-CA/emailAddress=ca@bancofachero.com" -extensions v3_ca -config <(cat /etc/ssl/openssl.cnf <(echo -e "\n[ v3_ca ]\n$(cat /etc/nginx/test/ca/ca-ext.cnf)"))
 
-put it in a truststore
-keytool -v -importcert -file server.cer -alias server -keystore truststore-client.jks -storepass changeit -noprompt
+# --- PASO 3: Generar Certificado de Servidor (para Nginx) ---
+# Generar clave privada del servidor
+openssl genpkey -algorithm RSA -out /etc/nginx/test/server/server.key
 
+# Generar solicitud de firma de certificado (CSR) del servidor
+openssl req -new -key /etc/nginx/test/server/server.key -out /etc/nginx/test/server/server.csr -subj "/C=CO/ST=Bogota/L=Bogota/O=BancoFachero/CN=servidor.bancofachero/emailAddress=server@bancofachero.com"
 
+# Firmar el CSR del servidor con la CA raíz (válido por 1 año)
+openssl x509 -req -in /etc/nginx/test/server/server.csr -CA /etc/nginx/test/ca/ca.crt -CAkey /etc/nginx/test/ca/ca.key -CAcreateserial -out /etc/nginx/test/server/server.crt -days 365
 
-client
-key store: 
-keytool -v -genkeypair -dname "CN=localhost,OU=localhost,O=localhost,C=NL" -keystore identity.jks -storepass changeit -keypass changeit -keyalg RSA -keysize 2048 -alias client -validity 3650 -deststoretype pkcs12 -ext KeyUsage=digitalSignature,dataEncipherment,keyEncipherment,keyAgreement -ext ExtendedKeyUsage=serverAuth,clientAuth
+# --- PASO 4: Generar Certificado de Cliente (para Spring Boot) ---
+# Generar clave privada del cliente
+openssl genpkey -algorithm RSA -out /etc/nginx/test/client/client.key
 
-export client cert
-keytool -v -exportcert -file client.cer -alias client -keystore identity.jks -storepass changeit -rfc
+# Generar solicitud de firma de certificado (CSR) del cliente
+openssl req -new -key /etc/nginx/test/client/client.key -out /etc/nginx/test/client/client.csr -subj "/C=CO/ST=Bogota/L=Bogota/O=BancoFachero/CN=cliente1.bancofachero/emailAddress=cliente@bancofachero.com"
 
-put it in trustore of server
-keytool -v -importcert -file client.cer -alias client -keystore truststore-server.jks -storepass changeit -noprompt
+# Firmar el CSR del cliente con la CA raíz (válido por 1 año)
+openssl x509 -req -in /etc/nginx/test/client/client.csr -CA /etc/nginx/test/ca/ca.crt -CAkey /etc/nginx/test/ca/ca.key -CAcreateserial -out /etc/nginx/test/client/client.crt -days 365
+
+# --- PASO 5: Exportar Certificado de Cliente a formato PKCS#12 (.p12) para Java ---
+# ¡IMPORTANTE! Te pedirá una contraseña para el archivo .p12. ¡Recuérdala!
+# Este alias "cliente1.bancofachero" es el que usarás en Spring Boot.
+openssl pkcs12 -export -inkey /etc/nginx/test/client/client.key -in /etc/nginx/test/client/client.crt -certfile /etc/nginx/test/ca/ca.crt -out /etc/nginx/test/client/client.p12 -name "cliente1.bancofachero"
